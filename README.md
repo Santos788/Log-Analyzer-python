@@ -135,7 +135,7 @@ Clayton Santos
 
 Sinta-se à vontade para clonar, estudar e melhorar o projeto!
 
-git clone https://github.com/seu-usuario/log-analyzer-pro.git
+git clone https://github.com/Santos788/log-analyzer-pro.git
 
 ---
 
