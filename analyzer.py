@@ -1,99 +1,95 @@
 import os
-
+from datetime import datetime
+import tkinter as tk
+from tkinter import messagebox
 
 LOG_FILE = "logs.txt"
 
 
-def garantir_arquivo(caminho):
-    """Garante que o arquivo existe"""
-    if not os.path.exists(caminho):
-        print("⚠️ Arquivo não encontrado. Criando...")
-        with open(caminho, "w"):
+def garantir_arquivo():
+    if not os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "w"):
             pass
 
 
-def ler_logs(caminho):
-    """Lê os logs do arquivo"""
-    with open(caminho, "r") as arquivo:
-        return arquivo.readlines()
+def adicionar_log():
+    ip = entry_ip.get()
+    status = entry_status.get()
 
-
-def adicionar_logs(caminho):
-    """Adiciona logs manualmente"""
-    print("\n✍️ Digite os logs (digite 'sair' para parar):")
-
-    with open(caminho, "a") as arquivo:
-        while True:
-            entrada = input("Log: ")
-
-            if entrada.lower() == "sair":
-                break
-
-            arquivo.write(entrada + "\n")
-
-
-def contar_falhas(linhas):
-    """Conta tentativas de login falhas por IP"""
-    ips = {}
-
-    for linha in linhas:
-        linha = linha.strip()
-
-        if "failed" in linha.lower():
-            partes = linha.split(" - ")
-
-            if len(partes) != 2:
-                print(f"⚠️ Linha inválida: {linha}")
-                continue
-
-            ip = partes[0]
-            ips[ip] = ips.get(ip, 0) + 1
-
-    return ips
-
-
-def detectar_suspeitos(ips, limite=3):
-    """Filtra IPs suspeitos com base no limite"""
-    return {ip: total for ip, total in ips.items() if total >= limite}
-
-
-def exibir_resultados(ips, suspeitos):
-    """Exibe os resultados no terminal"""
-    print("\n📊 Resultado geral:")
-    for ip, total in ips.items():
-        print(f"{ip} -> {total} falhas")
-
-    print("\n🚨 IPs suspeitos:")
-    if suspeitos:
-        for ip, total in suspeitos.items():
-            print(f"{ip} ({total} tentativas)")
-    else:
-        print("Nenhum IP suspeito encontrado.")
-
-
-def main():
-    garantir_arquivo(LOG_FILE)
-
-    print("\n=== LOG ANALYZER ===")
-    print("1 - Adicionar logs")
-    print("2 - Analisar logs")
-
-    opcao = input("Escolha: ")
-
-    if opcao == "1":
-        adicionar_logs(LOG_FILE)
-
-    linhas = ler_logs(LOG_FILE)
-
-    if not linhas:
-        print("📭 Arquivo vazio.")
+    if not ip or not status:
+        messagebox.showwarning("Erro", "Preencha todos os campos!")
         return
 
-    ips = contar_falhas(linhas)
-    suspeitos = detectar_suspeitos(ips)
+    data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log = f"{ip} - {status} - {data}"
 
-    exibir_resultados(ips, suspeitos)
+    with open(LOG_FILE, "a") as f:
+        f.write(log + "\n")
+
+    entry_ip.delete(0, tk.END)
+    entry_status.delete(0, tk.END)
+
+    messagebox.showinfo("Sucesso", "Log adicionado!")
 
 
-if __name__ == "__main__":
-    main()
+def analisar_logs():
+    if not os.path.exists(LOG_FILE):
+        messagebox.showwarning("Erro", "Arquivo não encontrado!")
+        return
+
+    ips = {}
+
+    with open(LOG_FILE, "r") as f:
+        for linha in f:
+            partes = linha.strip().split(" - ")
+
+            if len(partes) < 2:
+                continue
+
+            ip, status = partes[0], partes[1]
+
+            if status.lower() == "failed":
+                ips[ip] = ips.get(ip, 0) + 1
+
+    resultado.delete("1.0", tk.END)
+
+    resultado.insert(tk.END, "📊 Resultado:\n")
+
+    suspeitos = []
+
+    for ip, total in ips.items():
+        resultado.insert(tk.END, f"{ip} -> {total} falhas\n")
+
+        if total >= 3:
+            suspeitos.append((ip, total))
+
+    resultado.insert(tk.END, "\n🚨 Suspeitos:\n")
+
+    if suspeitos:
+        for ip, total in suspeitos:
+            resultado.insert(tk.END, f"{ip} ({total})\n")
+    else:
+        resultado.insert(tk.END, "Nenhum suspeito\n")
+
+
+# Interface
+garantir_arquivo()
+
+janela = tk.Tk()
+janela.title("Log Analyzer PRO")
+
+tk.Label(janela, text="IP:").pack()
+entry_ip = tk.Entry(janela)
+entry_ip.pack()
+
+tk.Label(janela, text="Status (failed/success):").pack()
+entry_status = tk.Entry(janela)
+entry_status.pack()
+
+tk.Button(janela, text="Adicionar Log", command=adicionar_log).pack(pady=5)
+tk.Button(janela, text="Analisar Logs", command=analisar_logs).pack(pady=5)
+
+resultado = tk.Text(janela, height=15, width=40)
+resultado.pack()
+
+janela.mainloop()
